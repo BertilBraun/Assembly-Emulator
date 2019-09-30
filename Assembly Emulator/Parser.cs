@@ -17,10 +17,10 @@ namespace Assembly_Emulator
         char[] delim = new char[] { ' ', '\t', ',', ';' };
         int commandCount = 0;
 
-        public List<Command> Create(string path)
+		public List<Command> Create(string[] lines)
         {
             var tokens = new List<string[]>();
-            var content = GetContent(path).Select(c => c.ToUpper());
+            var content = lines.Select(c => c.ToUpper());
 
             foreach (var c in content)
             {
@@ -78,12 +78,6 @@ namespace Assembly_Emulator
                 return Convert.ToInt32(number.TrimEnd('H'), 16);
 
             return Convert.ToInt32(number, 10);
-        }
-
-        string[] GetContent(string path)
-        {
-            if (!File.Exists(path)) File.Create(path).Close();
-            return File.ReadAllLines(path);
         }
 
         Dictionary<string, Action<string[]>> CommandDict = new Dictionary<string, Action<string[]>>
