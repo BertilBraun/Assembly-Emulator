@@ -1,0 +1,11 @@
+Jump:
+
+	CALL Func
+
+	JMP Jump
+
+Func:
+	MOV A, P0
+	INC P0
+	PRINT A
+	RET
