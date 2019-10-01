@@ -10,7 +10,7 @@ namespace Assembly_Emulator
         static string C = Settings.Constants["C"].ToString();
         static string A = Settings.Constants["A"].ToString();
 
-        static List<Command> Commands = new List<Command>();
+        public static List<Command> Commands = new List<Command>();
         static Dictionary<string, int> JumpPositions = new Dictionary<string, int>();
         static Dictionary<string, int> Constants = new Dictionary<string, int>(Settings.Constants);
 
@@ -61,8 +61,20 @@ namespace Assembly_Emulator
                     break;
             }
 
+            if (tokens[1] == "EQE")
+                Constants.Add(tokens[0], ParseNumber(tokens[2]));
+
+            if (tokens[0].Substring(1) == "INCLUDE")
+                new Parser().Create(File.ReadAllLines(tokens[1].Replace('\"', ' ')));
+
             if (tokens.Length > 0 && CommandDict.Keys.Contains(tokens[0]))
                 commandCount++;
+
+            if (tokens[0] == "ORG")
+                Program.Orgs[tokens[1]] = commandCount;
+
+            if (tokens[0] == "DB")
+                Program.ROM.Byte(commandCount * 8, ParseNumber(tokens[1]));
 
             return cleanTokens.ToArray();
         }
@@ -102,6 +114,13 @@ namespace Assembly_Emulator
                     if (tokens[2].StartsWith('@'))
                         Commands.Add(new MOV_AT_FROM { to = ParseNumber(tokens[1]), from = ParseNumber(tokens[2].Substring(1)) });
             } },
+            { "MOVC", tokens =>
+            {
+                    if (tokens[2] == "@A+DPTR")
+                        Commands.Add(new MOV_DPTR());
+                    if (tokens[2] == "@A+PC")
+                        Commands.Add(new MOV_PC());
+            } },
             { "XCH", tokens =>
             {
                     if (tokens[2].StartsWith('@'))
@@ -124,13 +143,6 @@ namespace Assembly_Emulator
             { "POP", tokens =>
             {
                     Commands.Add(new POP  { to = ParseNumber(tokens[1]) });
-            } },
-            { "MOVC", tokens =>
-            {
-                    if (tokens[2] == "@A+DPTR")
-                        Commands.Add(new MOV_DPTR());
-                    if (tokens[2] == "@A+PC")
-                        Commands.Add(new MOV_PC());
             } },
             { "ANL", tokens =>
             {
@@ -319,6 +331,10 @@ namespace Assembly_Emulator
             { "RET", tokens =>
             {
                     Commands.Add(new RET());
+            } },
+            { "RETI", tokens =>
+            {
+                    Commands.Add(new RETI());
             } },
 
 

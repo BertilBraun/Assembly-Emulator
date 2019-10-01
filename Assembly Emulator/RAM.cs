@@ -1,10 +1,10 @@
 ﻿namespace Assembly_Emulator
 {
-    class Ram
+    class Memory
     {
         byte[] data;
 
-        public Ram(int size)
+        public Memory(int size)
         {
             data = new byte[size];
         }

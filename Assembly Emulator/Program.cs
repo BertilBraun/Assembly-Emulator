@@ -9,19 +9,16 @@ namespace Assembly_Emulator
         /// <summary>
         /// TODOs
         /// 
-        /// Interrupts
-        /// 
-        /// org
-        /// Includes
-        /// defines
-        /// databyte
+        /// Correct locations for P & R
         /// 
         /// </summary>
 
         public static int ProgramCounter = 0;
-        public static Ram RAM = new Ram(4 * 1024);
+        public static Memory RAM = new Memory(4 * 1024);
+        public static Memory ROM = new Memory(4 * 1024);
         public static Queue<int> Stack = new Queue<int>();
         public static List<Command> Commands;
+        public static Dictionary<string, int> Orgs = new Dictionary<string, int>();
 
         static void Main(string[] args)
         {
@@ -47,12 +44,11 @@ namespace Assembly_Emulator
                     System.Threading.Thread.Sleep(100);
                 }
 
-                Parser.Commands.Clear();
-
                 string command = Console.ReadLine();
                 if (command.ToUpper() == "Q")
                     break;
 
+                Parser.Commands.Clear();
                 Commands.AddRange(new Parser().Create(new string[] { command }));
             }
         }
@@ -63,20 +59,53 @@ namespace Assembly_Emulator
             {
                 var key = char.ToUpper(Console.ReadKey(true).KeyChar);
 
-                RAM.Bit(Settings.Constants["P1.0"], key == '0'); // Keyboard pressed Key 0
-                RAM.Bit(Settings.Constants["P1.1"], key == '1'); // Keyboard pressed Key 1
-                RAM.Bit(Settings.Constants["P1.2"], key == '2'); // Keyboard pressed Key 2
-                RAM.Bit(Settings.Constants["P1.3"], key == '3'); // Keyboard pressed Key 3
-                RAM.Bit(Settings.Constants["P1.4"], key == '4'); // Keyboard pressed Key 4
-                RAM.Bit(Settings.Constants["P1.5"], key == '5'); // Keyboard pressed Key 5
-                RAM.Bit(Settings.Constants["P1.6"], key == '6'); // Keyboard pressed Key 6
-                RAM.Bit(Settings.Constants["P1.7"], key == '7'); // Keyboard pressed Key 7
+                RAM.Bit(Settings.Constants["P1.0"], key == '0');
+                RAM.Bit(Settings.Constants["P1.1"], key == '1');
+                RAM.Bit(Settings.Constants["P1.2"], key == '2');
+                RAM.Bit(Settings.Constants["P1.3"], key == '3');
+                RAM.Bit(Settings.Constants["P1.4"], key == '4');
+                RAM.Bit(Settings.Constants["P1.5"], key == '5');
+                RAM.Bit(Settings.Constants["P1.6"], key == '6');
+                RAM.Bit(Settings.Constants["P1.7"], key == '7');
 
-                RAM.Bit(Settings.Constants["P3.2"], key == 'P'); // Keyboard pressed Key P
-                RAM.Bit(Settings.Constants["P3.3"], key == 'O'); // Keyboard pressed Key O
+                RAM.Bit(Settings.Constants["P3.2"], key == 'P');
+                RAM.Bit(Settings.Constants["P3.3"], key == 'O');
 
-                if (key == 'P') ; // Interrupt 0
-                if (key == 'O') ; // Interrupt 1
+                if (RAM.Bit(Settings.Constants["EA"]) != 0)
+                {
+                    Action<string> inter = (string s) =>
+                    {
+                        if (Orgs.ContainsKey(s))
+                        {
+                            Stack.Enqueue(ProgramCounter);
+                            ProgramCounter = Orgs[s];
+                        }
+                    };
+                    Func<string, string, bool> set = (string f, string s) => {
+                        return RAM.Bit(Settings.Constants[f]) != 0 &&
+                            RAM.Bit(Settings.Constants[s]) != 0;
+                    };
+                    Action<string, string, string> timer = (string f, string s, string org) => {
+                        if (RAM.Byte(Settings.Constants[f]) == 255)
+                        {
+                            if (RAM.Byte(Settings.Constants[s]) == 255)
+                                inter(org);
+                            new INC { to = Settings.Constants[s] }.Run();
+                        }
+                        new INC { to = Settings.Constants[f] }.Run();
+                    };
+
+                    if (key == 'P' && set("EX0", "IT0"))
+                        inter("0003H"); // Interrupt 0
+                    if (key == 'O' && set("EX1", "IT1"))
+                        inter("0013H"); // Interrupt 1
+
+                    if (set("ET0", "TR0"))
+                        timer("TL0", "TH0", "000BH"); // Interrupt T0
+
+                    if (set("ET1", "TR1"))
+                        timer("TL1", "TH1", "001BH"); // Interrupt T1
+                }
             }
         }
 

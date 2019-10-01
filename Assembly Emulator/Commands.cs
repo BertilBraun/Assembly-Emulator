@@ -54,20 +54,18 @@ namespace Assembly_Emulator
     {
         public override void Run()
         {
-            var adptr = Program.RAM.Byte(Settings.Constants["A"]) + Program.RAM.Byte(Settings.Constants["DPTR"]);
-            var address = Program.RAM.Byte(adptr);
+            var address = Program.RAM.Byte(Settings.Constants["A"]) + Program.RAM.Byte(Settings.Constants["DPTR"]);
 
-            Program.RAM.Byte(Settings.Constants["A"], Program.RAM.Byte(address));
+            Program.RAM.Byte(Settings.Constants["A"], Program.ROM.Byte(address));
         }
     }
     class MOV_PC : Command
     {
         public override void Run()
         {
-            var apc = Program.RAM.Byte(Settings.Constants["A"]) + Program.RAM.Byte(Program.ProgramCounter);
-            var address = Program.RAM.Byte(apc);
+            var address = Program.RAM.Byte(Settings.Constants["A"]) + Program.RAM.Byte(Program.ProgramCounter);
 
-            Program.RAM.Byte(Settings.Constants["A"], Program.RAM.Byte(address));
+            Program.RAM.Byte(Settings.Constants["A"], Program.ROM.Byte(address));
         }
     }
     class MOV_B : Command
@@ -296,7 +294,15 @@ namespace Assembly_Emulator
             Program.ProgramCounter = Program.Stack.Dequeue();
         }
     }
-    
+
+    class RETI : Command
+    {
+        public override void Run()
+        {
+            Program.ProgramCounter = Program.Stack.Dequeue();
+        }
+    }
+
     class ADD : Command
     {
         public int to, from;
