@@ -4,22 +4,8 @@ using System.IO;
 
 namespace Assembly_Emulator
 {
-    class Program
+    class MainClass
     {
-        /// <summary>
-        /// TODOs
-        /// 
-        /// Correct locations for P & R
-        /// 
-        /// </summary>
-
-        public static int ProgramCounter = 0;
-        public static Memory RAM = new Memory(4 * 1024);
-        public static Memory ROM = new Memory(4 * 1024);
-        public static Queue<int> Stack = new Queue<int>();
-        public static List<Command> Commands;
-        public static Dictionary<string, int> Orgs = new Dictionary<string, int>();
-
         static void Main(string[] args)
         {
             string path = @"C:\Users\Braun\Desktop\Assembly-Emulator-master\program.ae"; // EDIT PATH !
@@ -31,64 +17,96 @@ namespace Assembly_Emulator
             //    path = Console.ReadLine();
             //}
 
-            Commands = new Parser().Create(GetContent(path));
+            new Program(path).Run();
+        }
+    }
 
+    class ProgramData
+    {
+        public int ProgramCounter = 0;
+        
+        public Memory RAM = new Memory(4 * 1024);
+        public Memory ROM = new Memory(4 * 1024);
+        public Queue<int> Stack = new Queue<int>();
+        public List<Command> Commands = new List<Command>();
+        public Dictionary<string, int> Orgs = new Dictionary<string, int>();
+        public Dictionary<string, int> JumpPositions = new Dictionary<string, int>();
+    }
+
+    class Program
+    {
+        /// <summary>
+        /// TODOs
+        /// 
+        /// Correct locations for P & R
+        /// 
+        /// </summary>
+
+        static public ProgramData Data { get; set; }
+
+        public Program(string path)
+        {
+            Data = new ProgramData();
+            new Parser().Create(GetContent(path));
+        }
+
+        public void Run()
+        {
             while (true)
             {
-                while (ProgramCounter < Commands.Count)
+                while (Data.ProgramCounter < Data.Commands.Count)
                 {
                     Input();
-                    Commands[ProgramCounter++].Run();
+                    Data.Commands[Data.ProgramCounter++].Run();
                     Output();
 
-                    System.Threading.Thread.Sleep(100);
+                    System.Threading.Thread.Sleep(2000);
                 }
 
                 string command = Console.ReadLine();
                 if (command.ToUpper() == "Q")
                     break;
 
-                Parser.Commands.Clear();
-                Commands.AddRange(new Parser().Create(new string[] { command }));
+                new Parser().Create(new string[] { command });
             }
         }
 
-        static void Input()
+        void Input()
         {
             if (Console.KeyAvailable)
             {
                 var key = char.ToUpper(Console.ReadKey(true).KeyChar);
 
-                RAM.Bit(Settings.Constants["P1.0"], key == '0');
-                RAM.Bit(Settings.Constants["P1.1"], key == '1');
-                RAM.Bit(Settings.Constants["P1.2"], key == '2');
-                RAM.Bit(Settings.Constants["P1.3"], key == '3');
-                RAM.Bit(Settings.Constants["P1.4"], key == '4');
-                RAM.Bit(Settings.Constants["P1.5"], key == '5');
-                RAM.Bit(Settings.Constants["P1.6"], key == '6');
-                RAM.Bit(Settings.Constants["P1.7"], key == '7');
+                Data.RAM.Bit(Settings.Constants["P1.0"], key == '0');
+                Data.RAM.Bit(Settings.Constants["P1.1"], key == '1');
+                Data.RAM.Bit(Settings.Constants["P1.2"], key == '2');
+                Data.RAM.Bit(Settings.Constants["P1.3"], key == '3');
+                Data.RAM.Bit(Settings.Constants["P1.4"], key == '4');
+                Data.RAM.Bit(Settings.Constants["P1.5"], key == '5');
+                Data.RAM.Bit(Settings.Constants["P1.6"], key == '6');
+                Data.RAM.Bit(Settings.Constants["P1.7"], key == '7');
 
-                RAM.Bit(Settings.Constants["P3.2"], key == 'P');
-                RAM.Bit(Settings.Constants["P3.3"], key == 'O');
+                Data.RAM.Bit(Settings.Constants["P3.2"], key == 'P');
+                Data.RAM.Bit(Settings.Constants["P3.3"], key == 'O');
 
-                if (RAM.Bit(Settings.Constants["EA"]) != 0)
+                if (Data.RAM.Bit(Settings.Constants["EA"]) != 0)
                 {
                     Action<string> inter = (string s) =>
                     {
-                        if (Orgs.ContainsKey(s))
+                        if (Data.Orgs.ContainsKey(s))
                         {
-                            Stack.Enqueue(ProgramCounter);
-                            ProgramCounter = Orgs[s];
+                            Data.Stack.Enqueue(Data.ProgramCounter);
+                            Data.ProgramCounter = Data.Orgs[s];
                         }
                     };
                     Func<string, string, bool> set = (string f, string s) => {
-                        return RAM.Bit(Settings.Constants[f]) != 0 &&
-                            RAM.Bit(Settings.Constants[s]) != 0;
+                        return  Data.RAM.Bit(Settings.Constants[f]) != 0 &&
+                                Data.RAM.Bit(Settings.Constants[s]) != 0;
                     };
                     Action<string, string, string> timer = (string f, string s, string org) => {
-                        if (RAM.Byte(Settings.Constants[f]) == 255)
+                        if (Data.RAM.Byte(Settings.Constants[f]) == 255)
                         {
-                            if (RAM.Byte(Settings.Constants[s]) == 255)
+                            if (Data.RAM.Byte(Settings.Constants[s]) == 255)
                                 inter(org);
                             new INC { to = Settings.Constants[s] }.Run();
                         }
@@ -109,15 +127,15 @@ namespace Assembly_Emulator
             }
         }
 
-        static void Output()
+        void Output()
         {
             Action<string> print = (string o) => {
-                Console.WriteLine(o + " : " + Convert.ToString(RAM.Byte(Settings.Constants[o]), 2).PadLeft(8, '0'));
+                Console.WriteLine(o + " : " + Convert.ToString(Data.RAM.Byte(Settings.Constants[o]), 2).PadLeft(8, '0'));
             };
 
             Action<string, int, int> segment = (string s, int x, int y) => {
 
-                var data = Convert.ToString(RAM.Byte(Settings.Constants[s]), 2).PadLeft(8, '0');
+                var data = Convert.ToString(Data.RAM.Byte(Settings.Constants[s]), 2).PadLeft(8, '0');
 
                 Action<char, int, int> p = (char o, int x1, int y1) => {
                     Console.SetCursorPosition(x + x1, y + y1);
@@ -152,7 +170,7 @@ namespace Assembly_Emulator
             Console.SetCursorPosition(5, 3);
             Console.WriteLine("                                     ");
             Console.SetCursorPosition(5, 3);
-            Console.WriteLine(Commands[ProgramCounter].GetType().Name);
+            Console.WriteLine(Data.Commands[Data.ProgramCounter].Desc());
 
             Console.SetCursorPosition(0, 0);
         }
